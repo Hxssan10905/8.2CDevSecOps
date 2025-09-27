@@ -2,22 +2,25 @@ pipeline {
     agent any
 
     environment {
-        // Your SonarCloud token (replace with Jenkins credential ID in production)
         SONAR_TOKEN = 'ebc82c3371928a2f0def997da7a42bfe7a59feff'
     }
 
     stages {
         stage('Install Dependencies') {
             steps {
-                echo 'Installing Node.js dependencies...'
-                sh 'npm install'
+                nodejs('NodeJS 18') {   // <-- Use the name you gave in Global Tool Configuration
+                    echo 'Installing Node.js dependencies...'
+                    sh 'npm install'
+                }
             }
         }
 
         stage('Run Tests') {
             steps {
-                echo 'Running tests...'
-                sh 'npm test'
+                nodejs('NodeJS 18') {
+                    echo 'Running tests...'
+                    sh 'npm test'
+                }
             }
         }
 
