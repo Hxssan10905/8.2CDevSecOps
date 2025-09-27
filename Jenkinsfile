@@ -2,43 +2,50 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = 'ebc82c3371928a2f0def997da7a42bfe7a59feff'
+        // NodeJS installation configured in Jenkins
+        NODEJS_HOME = tool name: 'NodeJS_18', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+
+        // SonarCloud token (configured in Jenkins credentials)
+        SONAR_TOKEN = credentials('SONAR_TOKEN')
     }
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
-                nodejs('NodeJS 18') {   // <-- Use the name you gave in Global Tool Configuration
-                    echo 'Installing Node.js dependencies...'
-                    sh 'npm install'
-                }
+                echo 'Installing Node.js dependencies...'
+                sh 'npm install'
             }
         }
 
         stage('Run Tests') {
             steps {
-                nodejs('NodeJS 18') {
-                    echo 'Running tests...'
-                    sh 'npm test'
-                }
+                echo 'Running tests with npm...'
+                // Use npm test (Mocha or Jest) instead of Snyk
+                sh 'npm test'
+                
+                // Optional: run Snyk as warning without stopping the pipeline
+                // sh 'snyk test || echo "Snyk test skipped (needs auth)"'
             }
         }
 
         stage('SonarCloud Analysis') {
             steps {
-                echo 'Running SonarCloud scan...'
-                sh """
-                ~/Desktop/sonar-scanner-7.2.0.5079-macosx-aarch64/bin/sonar-scanner \
-                -Dsonar.projectKey=Hxssan10905_8.2CDevSecOps \
-                -Dsonar.organization=Hxssan10905 \
-                -Dsonar.host.url=https://sonarcloud.io \
-                -Dsonar.login=$SONAR_TOKEN \
-                -Dsonar.sources=. \
-                -Dsonar.exclusions=node_modules/**,test/** \
-                -Dsonar.javascript.lcov.reportPaths=coverage/lcov-report/lcov-report.json \
-                -Dsonar.projectName='NodeJS Goof Vulnerable App' \
-                -Dsonar.sourceEncoding=UTF-8
-                """
+                echo 'Running SonarCloud analysis...'
+                withSonarQubeEnv('SonarCloud') {
+                    sh 'sonar-scanner \
+                        -Dsonar.projectKey=YOUR_PROJECT_KEY \
+                        -Dsonar.organization=YOUR_ORG \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=https://sonarcloud.io \
+                        -Dsonar.login=${SONAR_TOKEN}'
+                }
             }
         }
     }
@@ -46,6 +53,12 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished!'
+        }
+        success {
+            echo 'Pipeline completed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed.'
         }
     }
 }
